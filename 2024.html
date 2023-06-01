@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>撲克牌 21點遊戲</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* 優化手機顯示 */
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 10px;
+    }
+
+    .card {
+      display: inline-block;
+      border: 1px solid black;
+      padding: 5px;
+      margin: 5px;
+      font-size: 14px;
+    }
+
+    button {
+      font-size: 16px;
+      padding: 10px 20px;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>撲克牌 21點遊戲</h1>
+  <p>籌碼：<span id="chips">300</span></p>
+  <p>下注金額：<input type="number" id="betAmount" min="10" max="200" value="10" required></p>
+  <button onclick="startGame()">開始遊戲</button>
+  <button id="playerHit" onclick="playerHit()" disabled>叫牌</button>
+  <button id="playerStand" onclick="playerStand()" disabled>停牌</button>
+  <h2>玩家手牌</h2>
+  <div id="playerCards"></div>
+  <p>點數：<span id="playerPoints"></span></p>
+  <h2>電腦手牌</h2>
+  <div id="computerCards"></div>
+  <p>點數：<span id="computerPoints"></span></p>
+  <h2>結果</h2>
+  <p id="result"></p>
+
+  <script>
+    var deck = [
+      'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K',
+      'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K',
+      'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K',
+      'A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
+    ];
+
+    var playerCards = [];
+    var playerPoints = 0;
+    var computerCards = [];
+    var computerPoints = 0;
+    var chips = 300;
+
+    var betAmountInput = document.getElementById('betAmount');
+    var chipsDisplay = document.getElementById('chips');
+    var playerCardsDiv = document.getElementById('playerCards');
+    var playerPointsDisplay = document.getElementById('playerPoints');
+    var computerCardsDiv = document.getElementById('computerCards');
+    var computerPointsDisplay = document.getElementById('computerPoints');
+    var resultDisplay = document.getElementById('result');
+    var startButton = document.querySelector('button');
+    var hitButton = document.getElementById('playerHit');
+    var standButton = document.getElementById('playerStand');
+
+    function startGame() {
+      var betAmount = parseInt(betAmountInput.value);
+      if (betAmount <= chips && betAmount >= 10) {
+        chips -= betAmount;
+        chipsDisplay.textContent = chips;
+        betAmountInput.disabled = true;
+        startButton.disabled = true;
+        hitButton.disabled = false;
+        standButton.disabled = false;
+        resultDisplay.textContent = '';
+
+        playerCards = [];
+        playerPoints = 0;
+        computerCards = [];
+        computerPoints = 0;
+
+        playerCardsDiv.innerHTML = '';
+        playerPointsDisplay.textContent = '';
+        computerCardsDiv.innerHTML = '';
+        computerPointsDisplay.textContent = '';
+
+        shuffleDeck(deck);
+        dealCards();
+        updatePoints();
+      } else {
+        resultDisplay.textContent = '下注金額無效！';
+      }
+    }
+
+    function shuffleDeck(deck) {
+      for (var i = deck.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = deck[i];
+        deck[i] = deck[j];
+        deck[j] = temp;
+      }
+    }
+
+    function dealCards() {
+      for (var i = 0; i < 2; i++) {
+        playerCards.push(deck.pop());
+        computerCards.push(deck.pop());
+      }
+      renderCards();
+    }
+
+    function renderCards() {
+      playerCardsDiv.innerHTML = '';
+      computerCardsDiv.innerHTML = '';
+
+      playerCards.forEach(function(card) {
+        var cardElement = document.createElement('div');
+        cardElement.classList.add('card');
+        cardElement.textContent = card;
+        playerCardsDiv.appendChild(cardElement);
+      });
+
+      computerCards.forEach(function(card, index) {
+        var cardElement = document.createElement('div');
+        cardElement.classList.add('card');
+        if (index === 0) {
+          cardElement.textContent = '?';
+        } else {
+          cardElement.textContent = card;
+        }
+        computerCardsDiv.appendChild(cardElement);
+      });
+    }
+
+    function updatePoints() {
+      playerPoints = calculatePoints(playerCards);
+      playerPointsDisplay.textContent = playerPoints;
+
+      if (standButton.disabled) {
+        computerPoints = calculatePoints(computerCards);
+        computerPointsDisplay.textContent = computerPoints;
+      } else {
+        computerPointsDisplay.textContent = '';
+      }
+    }
+
+    function calculatePoints(cards) {
+      var points = 0;
+      var numOfAces = 0;
+
+      cards.forEach(function(card) {
+        if (card === 'A') {
+          points += 11;
+          numOfAces++;
+        } else if (card === 'K' || card === 'Q' || card === 'J') {
+          points += 10;
+        } else {
+          points += parseInt(card);
+        }
+      });
+
+      while (points > 21 && numOfAces > 0) {
+        points -= 10;
+        numOfAces--;
+      }
+
+      return points;
+    }
+
+    function playerHit() {
+      playerCards.push(deck.pop());
+      renderCards();
+      updatePoints();
+
+      if (playerPoints > 21) {
+        endGame('你輸了');
+      }
+    }
+
+    function playerStand() {
+      while (computerPoints < 17) {
+        computerCards.push(deck.pop());
+        renderCards();
+        updatePoints();
+      }
+
+      if (computerPoints > 21 || playerPoints > computerPoints) {
+        endGame('你贏了');
+      } else if (playerPoints === computerPoints) {
+        endGame('平局');
+      } else {
+        endGame('你輸了');
+      }
+    }
+
+    function endGame(result) {
+      hitButton.disabled = true;
+      standButton.disabled = true;
+      resultDisplay.textContent = result;
+
+      if (result === '你贏了') {
+        chips += betAmountInput.value * 2;
+      } else if (result === '平局') {
+        chips += parseInt(betAmountInput.value);
+      }
+
+      chipsDisplay.textContent = chips;
+
+      if (chips < 10) {
+        startButton.disabled = true;
+        resultDisplay.textContent = '你的籌碼不足，遊戲結束！';
+      } else {
+        betAmountInput.disabled = false;
+        startButton.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
